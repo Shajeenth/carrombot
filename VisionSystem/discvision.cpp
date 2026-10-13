@@ -44,51 +44,61 @@ int main()
             return 1;
         }
 
-        cv::Mat hsv, mask;
+        cv::Mat hsv, redMask, blackMask;
         cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
 
         cv::Mat mask1, mask2;
         cv::inRange(hsv, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255), mask1);
         cv::inRange(hsv, cv::Scalar(170, 100, 100), cv::Scalar(180, 255, 255), mask2);
-        mask = mask1 | mask2;
+        redMask = mask1 | mask2;
+
+        // Black discs: dark objects with low brightness (adjust if needed)
+        cv::inRange(hsv, cv::Scalar(0, 0, 0), cv::Scalar(180, 255, 80), blackMask);
 
         cv::Mat kernel = cv::getStructuringElement(
             cv::MORPH_ELLIPSE,
             cv::Size(7, 7)
         );
 
-        cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, kernel);
+        cv::morphologyEx(redMask, redMask, cv::MORPH_CLOSE, kernel);
+        cv::morphologyEx(blackMask, blackMask, cv::MORPH_CLOSE, kernel);
 
-        std::vector<std::vector<cv::Point>> contours;
-        cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-        for (const auto& contour : contours)
+        auto drawCircularContours = [&](const cv::Mat& mask, const cv::Scalar& color)
         {
-            double area = cv::contourArea(contour);
+            std::vector<std::vector<cv::Point>> contours;
+            cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-            if (area < 100 || area > 2000)
-                continue;
+            for (const auto& contour : contours)
+            {
+                double area = cv::contourArea(contour);
 
-            double perimeter = cv::arcLength(contour, true);
+                if (area < 100 || area > 2000)
+                    continue;
 
-            if (perimeter <= 0)
-                continue;
+                double perimeter = cv::arcLength(contour, true);
 
-            double circularity =
-                4.0 * CV_PI * area / (perimeter * perimeter);
+                if (perimeter <= 0)
+                    continue;
 
-            if (circularity < 0.65)
-                continue;
+                double circularity =
+                    4.0 * CV_PI * area / (perimeter * perimeter);
 
-            cv::Point2f center;
-            float radius;
-            cv::minEnclosingCircle(contour, center, radius);
+                if (circularity < 0.65)
+                    continue;
 
-            cv::circle(frame, center, (int)radius,
-                    cv::Scalar(0, 255, 0), 2);
-        }
+                cv::Point2f center;
+                float radius;
+                cv::minEnclosingCircle(contour, center, radius);
 
-        cv::imshow("Red Mask", mask);
+                cv::circle(frame, center, (int)radius, color, 2);
+            }
+        };
+
+        drawCircularContours(redMask, cv::Scalar(0, 255, 0));
+        drawCircularContours(blackMask, cv::Scalar(255, 0, 0));
+
+        cv::imshow("Red Mask", redMask);
+        cv::imshow("Black Mask", blackMask);
 
         cv::imshow(windowName, frame);
 
