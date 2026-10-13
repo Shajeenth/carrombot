@@ -53,7 +53,7 @@ int main()
         redMask = mask1 | mask2;
 
         // Black discs: dark objects with low brightness (adjust if needed)
-        cv::inRange(hsv, cv::Scalar(0, 0, 0), cv::Scalar(180, 255, 80), blackMask);
+        cv::inRange(hsv, cv::Scalar(0, 0, 0), cv::Scalar(180, 255, 110), blackMask);
 
         cv::Mat kernel = cv::getStructuringElement(
             cv::MORPH_ELLIPSE,
